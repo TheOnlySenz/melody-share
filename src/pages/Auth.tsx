@@ -26,7 +26,7 @@ const Auth = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold">
-            Welcome to ShortsPay
+            Welcome to ShortsRev
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Sign in to access exclusive music for your Shorts and start earning

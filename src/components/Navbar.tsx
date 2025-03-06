@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Music, User } from 'lucide-react';
@@ -50,7 +49,7 @@ const Navbar: React.FC = () => {
           <Link to="/" className="flex items-center space-x-2">
             <Music className="h-8 w-8 text-primary animate-fade-in" />
             <span className="text-xl font-semibold text-foreground animate-fade-in animate-delay-100">
-              MelodyShare
+              ShortsRev
             </span>
           </Link>
 

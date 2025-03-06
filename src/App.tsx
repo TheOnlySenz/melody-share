@@ -27,6 +27,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/dashboard/*" element={<Dashboard />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/about" element={<Index />} /> {/* Temporary redirect to index */}
+            <Route path="/how-it-works" element={<Index />} /> {/* Temporary redirect to index */}
+            <Route path="/pricing" element={<Index />} /> {/* Temporary redirect to index */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

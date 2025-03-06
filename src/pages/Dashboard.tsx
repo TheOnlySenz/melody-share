@@ -31,6 +31,8 @@ const Dashboard = () => {
         <Route path="/music" element={<MusicLibrary />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/earnings" element={<Analytics />} /> {/* Temporarily point to Analytics */}
+        <Route path="/settings" element={<Profile />} /> {/* Temporarily point to Profile */}
       </Routes>
     </DashboardLayout>
   );

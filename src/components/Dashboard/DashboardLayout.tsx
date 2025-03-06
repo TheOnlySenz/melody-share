@@ -72,7 +72,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           <div className="p-6">
             <Link to="/" className="flex items-center space-x-2 mb-6">
               <Music className="h-6 w-6 text-primary" />
-              <span className="text-lg font-semibold">MelodyShare</span>
+              <span className="text-lg font-semibold">ShortsRev</span>
             </Link>
 
             <div className="flex items-center space-x-3 mb-2">
