@@ -1,19 +1,25 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, CSSProperties } from 'react';
 
 type FadeDirection = 'up' | 'down' | 'left' | 'right' | 'none';
 
-interface AnimationOptions {
-  threshold?: number;
+export interface AnimationOptions {
   delay?: number;
   duration?: number;
+  easing?: string;
+  threshold?: number;
   once?: boolean;
 }
 
-export const useIntersectionObserver = (
+export interface AnimationRef {
+  ref: React.MutableRefObject<any>;
+  style: CSSProperties;
+}
+
+const useIntersectionObserver = (
   options: IntersectionObserverInit = {}
 ) => {
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<any>(null);
   const [isIntersecting, setIsIntersecting] = useState(false);
 
   useEffect(() => {
@@ -35,8 +41,8 @@ export const useIntersectionObserver = (
 
 export const useFadeIn = (
   direction: FadeDirection = 'up',
-  { threshold = 0.1, delay = 0, duration = 600, once = true }: AnimationOptions = {}
-) => {
+  { threshold = 0.1, delay = 0, duration = 600, easing = 'ease-out', once = true }: AnimationOptions = {}
+): AnimationRef => {
   const { ref, isIntersecting } = useIntersectionObserver({ threshold });
   const [hasAnimated, setHasAnimated] = useState(false);
   
@@ -56,10 +62,10 @@ export const useFadeIn = (
     return 'none';
   };
   
-  const style = {
+  const style: CSSProperties = {
     opacity: shouldAnimate ? 1 : 0,
     transform: shouldAnimate ? 'none' : getTransform(),
-    transition: `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`,
+    transition: `opacity ${duration}ms ${easing}, transform ${duration}ms ${easing}`,
     transitionDelay: `${delay}ms`,
   };
   
@@ -68,11 +74,11 @@ export const useFadeIn = (
 
 export const useSequentialFadeIn = (
   count: number,
-  baseDelay: number = 100,
+  delayIncrement: number = 100,
   direction: FadeDirection = 'up',
   options: AnimationOptions = {}
-) => {
+): AnimationRef[] => {
   return Array.from({ length: count }).map((_, i) => 
-    useFadeIn(direction, { ...options, delay: baseDelay * i })
+    useFadeIn(direction, { ...options, delay: (options.delay || 0) + delayIncrement * i })
   );
 };
