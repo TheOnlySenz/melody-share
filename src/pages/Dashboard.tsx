@@ -5,6 +5,8 @@ import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 import MusicLibrary from '@/components/Dashboard/MusicLibrary';
 import Analytics from '@/components/Dashboard/Analytics';
 import Profile from '@/components/Dashboard/Profile';
+import Payments from '@/components/Dashboard/Payments';
+import Earnings from '@/components/Dashboard/Earnings';
 import { useAuth } from '@/context/AuthContext';
 
 const Dashboard = () => {
@@ -31,7 +33,8 @@ const Dashboard = () => {
         <Route path="/music" element={<MusicLibrary />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/earnings" element={<Analytics />} /> {/* Temporarily point to Analytics */}
+        <Route path="/earnings" element={<Earnings />} />
+        <Route path="/payments" element={<Payments />} />
         <Route path="/settings" element={<Profile />} /> {/* Temporarily point to Profile */}
       </Routes>
     </DashboardLayout>
