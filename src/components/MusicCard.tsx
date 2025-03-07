@@ -1,6 +1,5 @@
-
 import React, { useState, useRef } from 'react';
-import { Play, Pause, Download, Share2, Plus } from 'lucide-react';
+import { Play, Pause, Download, Share2, Plus, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
