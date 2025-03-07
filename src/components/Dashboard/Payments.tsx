@@ -1,18 +1,39 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { CreditCard, DollarSign, Users, ArrowRight, Check } from 'lucide-react';
+import { CreditCard, DollarSign, Users, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { useFadeIn } from '@/lib/animations';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+
+interface PaymentMethod {
+  id: string;
+  method_type: 'stripe' | 'paypal';
+  is_default: boolean;
+  details: {
+    account?: string;
+    email?: string;
+    last4?: string;
+  };
+}
+
+interface Collaborator {
+  email: string;
+  percentage: number;
+}
 
 const Payments = () => {
+  const { user } = useAuth();
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal' | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showSplitForm, setShowSplitForm] = useState(false);
-  const [collaborators, setCollaborators] = useState<Array<{ email: string, percentage: number }>>([
+  const [collaborators, setCollaborators] = useState<Array<Collaborator>>([
     { email: '', percentage: 50 }
   ]);
 
@@ -20,15 +41,98 @@ const Payments = () => {
   const paymentMethodsAnimation = useFadeIn('up', { delay: 100 });
   const revenueShareAnimation = useFadeIn('up', { delay: 200 });
 
-  const handleConnectPayment = (method: 'stripe' | 'paypal') => {
+  useEffect(() => {
+    fetchPaymentMethods();
+  }, [user]);
+
+  const fetchPaymentMethods = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setPaymentMethods(data as PaymentMethod[]);
+        const defaultMethod = data.find(method => method.method_type === 'stripe' || method.method_type === 'paypal');
+        if (defaultMethod) {
+          setPaymentMethod(defaultMethod.method_type as 'stripe' | 'paypal');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching payment methods:', error);
+      toast.error(error.message || 'Failed to load payment methods');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConnectPayment = async (method: 'stripe' | 'paypal') => {
+    if (!user) {
+      toast.error('You must be logged in to connect a payment method');
+      return;
+    }
+    
     setIsConnecting(true);
     setPaymentMethod(method);
     
-    // Simulate connection to payment provider
-    setTimeout(() => {
+    try {
+      // Check if this method already exists
+      const existingMethod = paymentMethods.find(pm => pm.method_type === method);
+      
+      if (existingMethod) {
+        // Update existing method to be default
+        const { error } = await supabase
+          .from('payment_methods')
+          .update({ is_default: true })
+          .eq('id', existingMethod.id);
+          
+        if (error) throw error;
+      } else {
+        // Create mock payment details (in a real app, this would come from Stripe/PayPal)
+        const mockDetails = method === 'stripe' 
+          ? { last4: '4242', brand: 'visa' }
+          : { email: user.email };
+          
+        // Insert new payment method
+        const { error } = await supabase
+          .from('payment_methods')
+          .insert([
+            {
+              user_id: user.id,
+              method_type: method,
+              is_default: true,
+              details: mockDetails
+            }
+          ]);
+          
+        if (error) throw error;
+      }
+      
+      // Set all other methods to non-default
+      if (paymentMethods.length > 0) {
+        await supabase
+          .from('payment_methods')
+          .update({ is_default: false })
+          .eq('user_id', user.id)
+          .neq('method_type', method);
+      }
+      
       toast.success(`Successfully connected to ${method === 'stripe' ? 'Stripe' : 'PayPal'}`);
+      
+      // Refresh payment methods
+      fetchPaymentMethods();
+    } catch (error: any) {
+      console.error('Error connecting payment method:', error);
+      toast.error(error.message || 'Failed to connect payment method');
+    } finally {
       setIsConnecting(false);
-    }, 2000);
+    }
   };
 
   const handleAddCollaborator = () => {
@@ -105,71 +209,83 @@ const Payments = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Card className={`cursor-pointer border-2 transition-all ${paymentMethod === 'stripe' ? 'border-primary' : 'border-border'}`}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Stripe</CardTitle>
-                <CardDescription>
-                  Process credit card payments with low fees
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm pb-2">
-                <ul className="space-y-1">
-                  <li className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-primary" /> 2.9% + 30¢ per transaction
-                  </li>
-                  <li className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-primary" /> Global payment support
-                  </li>
-                  <li className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-primary" /> Instant payouts available
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  variant={paymentMethod === 'stripe' ? 'default' : 'outline'} 
-                  className="w-full"
-                  onClick={() => handleConnectPayment('stripe')}
-                  disabled={isConnecting}
-                >
-                  {paymentMethod === 'stripe' ? 'Connected' : 'Connect Stripe'}
-                </Button>
-              </CardFooter>
-            </Card>
+          {isLoading ? (
+            <div className="h-40 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Card className={`cursor-pointer border-2 transition-all ${paymentMethod === 'stripe' ? 'border-primary' : 'border-border'}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Stripe</CardTitle>
+                  <CardDescription>
+                    Process credit card payments with low fees
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm pb-2">
+                  <ul className="space-y-1">
+                    <li className="flex items-center gap-1">
+                      <Check className="h-4 w-4 text-primary" /> 2.9% + 30¢ per transaction
+                    </li>
+                    <li className="flex items-center gap-1">
+                      <Check className="h-4 w-4 text-primary" /> Global payment support
+                    </li>
+                    <li className="flex items-center gap-1">
+                      <Check className="h-4 w-4 text-primary" /> Instant payouts available
+                    </li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    variant={paymentMethod === 'stripe' ? 'default' : 'outline'} 
+                    className="w-full"
+                    onClick={() => handleConnectPayment('stripe')}
+                    disabled={isConnecting}
+                  >
+                    {isConnecting && paymentMethod === 'stripe' ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    {paymentMethod === 'stripe' ? 'Connected' : 'Connect Stripe'}
+                  </Button>
+                </CardFooter>
+              </Card>
 
-            <Card className={`cursor-pointer border-2 transition-all ${paymentMethod === 'paypal' ? 'border-primary' : 'border-border'}`}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">PayPal</CardTitle>
-                <CardDescription>
-                  Accept payments via PayPal accounts
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm pb-2">
-                <ul className="space-y-1">
-                  <li className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-primary" /> 3.49% + 49¢ per transaction
-                  </li>
-                  <li className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-primary" /> Widely used payment method
-                  </li>
-                  <li className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-primary" /> Easy integration
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  variant={paymentMethod === 'paypal' ? 'default' : 'outline'} 
-                  className="w-full"
-                  onClick={() => handleConnectPayment('paypal')}
-                  disabled={isConnecting}
-                >
-                  {paymentMethod === 'paypal' ? 'Connected' : 'Connect PayPal'}
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+              <Card className={`cursor-pointer border-2 transition-all ${paymentMethod === 'paypal' ? 'border-primary' : 'border-border'}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">PayPal</CardTitle>
+                  <CardDescription>
+                    Accept payments via PayPal accounts
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm pb-2">
+                  <ul className="space-y-1">
+                    <li className="flex items-center gap-1">
+                      <Check className="h-4 w-4 text-primary" /> 3.49% + 49¢ per transaction
+                    </li>
+                    <li className="flex items-center gap-1">
+                      <Check className="h-4 w-4 text-primary" /> Widely used payment method
+                    </li>
+                    <li className="flex items-center gap-1">
+                      <Check className="h-4 w-4 text-primary" /> Easy integration
+                    </li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    variant={paymentMethod === 'paypal' ? 'default' : 'outline'} 
+                    className="w-full"
+                    onClick={() => handleConnectPayment('paypal')}
+                    disabled={isConnecting}
+                  >
+                    {isConnecting && paymentMethod === 'paypal' ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    {paymentMethod === 'paypal' ? 'Connected' : 'Connect PayPal'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          )}
         </CardContent>
       </Card>
       

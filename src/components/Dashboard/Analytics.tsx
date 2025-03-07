@@ -10,7 +10,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { CalendarRange, Download, TrendingUp, ArrowUpRight, BarChart3, Play } from 'lucide-react';
+import { CalendarRange, Download, TrendingUp, ArrowUpRight, BarChart3, Play, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -22,38 +22,7 @@ import {
 } from '@/components/ui/select';
 import { useFadeIn } from '@/lib/animations';
 import MusicCard, { Song } from '@/components/MusicCard';
-
-// Mock data for views chart
-const viewsData = [
-  { name: 'Jan', views: 4000 },
-  { name: 'Feb', views: 3000 },
-  { name: 'Mar', views: 2000 },
-  { name: 'Apr', views: 2780 },
-  { name: 'May', views: 1890 },
-  { name: 'Jun', views: 2390 },
-  { name: 'Jul', views: 3490 },
-  { name: 'Aug', views: 5000 },
-  { name: 'Sep', views: 7000 },
-  { name: 'Oct', views: 8500 },
-  { name: 'Nov', views: 9800 },
-  { name: 'Dec', views: 12000 },
-];
-
-// Mock data for earnings chart
-const earningsData = [
-  { name: 'Jan', earnings: 120 },
-  { name: 'Feb', earnings: 90 },
-  { name: 'Mar', earnings: 60 },
-  { name: 'Apr', earnings: 83 },
-  { name: 'May', earnings: 56 },
-  { name: 'Jun', earnings: 71 },
-  { name: 'Jul', earnings: 104 },
-  { name: 'Aug', earnings: 150 },
-  { name: 'Sep', earnings: 210 },
-  { name: 'Oct', earnings: 255 },
-  { name: 'Nov', earnings: 294 },
-  { name: 'Dec', earnings: 360 },
-];
+import { useEarnings } from '@/hooks/useEarnings';
 
 // Mock data for top songs
 const topSongs: Song[] = [
@@ -106,14 +75,48 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+// Generate views data based on earnings
+const generateViewsData = (earningsData: any[]) => {
+  return earningsData.map(item => ({
+    name: item.month,
+    views: Math.round(item.earnings * 1000 * (0.8 + Math.random() * 0.4)) // Random multiplier for variation
+  }));
+};
+
 const Analytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState('year');
+  const { analytics, earningsHistory, isLoading, error } = useEarnings();
   
   const headerAnimation = useFadeIn('up');
   const statsAnimation = useFadeIn('up', { delay: 100 });
   const viewsChartAnimation = useFadeIn('up', { delay: 200 });
   const earningsChartAnimation = useFadeIn('up', { delay: 300 });
   const topSongsAnimation = useFadeIn('up', { delay: 400 });
+
+  // Generate views data based on earnings
+  const viewsData = generateViewsData(earningsHistory);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading analytics data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <p className="text-destructive">Error loading analytics</p>
+          <p className="text-muted-foreground text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -167,7 +170,9 @@ const Analytics: React.FC = () => {
             <Play className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">452,621</div>
+            <div className="text-2xl font-bold">
+              {Math.floor(analytics.total * 1000).toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               <span className="text-emerald-500 font-medium flex items-center">
                 <ArrowUpRight className="h-3 w-3 mr-1" />
@@ -183,7 +188,9 @@ const Analytics: React.FC = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2,385.92</div>
+            <div className="text-2xl font-bold">
+              ${analytics.total.toFixed(2)}
+            </div>
             <p className="text-xs text-muted-foreground">
               <span className="text-emerald-500 font-medium flex items-center">
                 <ArrowUpRight className="h-3 w-3 mr-1" />
@@ -199,7 +206,7 @@ const Analytics: React.FC = () => {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
+            <div className="text-2xl font-bold">{topSongs.length}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-emerald-500 font-medium flex items-center">
                 <ArrowUpRight className="h-3 w-3 mr-1" />
@@ -264,9 +271,9 @@ const Analytics: React.FC = () => {
           <CardContent className="p-0">
             <div className="h-[300px] w-full p-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={earningsData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                <AreaChart data={earningsHistory} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                   <XAxis 
-                    dataKey="name" 
+                    dataKey="month" 
                     axisLine={false} 
                     tickLine={false} 
                     fontSize={12}
