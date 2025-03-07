@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Music, 
   BarChart3, 
@@ -10,33 +10,81 @@ import {
   X,
   Home,
   DollarSign,
-  Settings
+  Settings,
+  Users,
+  Brush,
+  Mic
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from '@/components/ui/badge';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const sidebarItems = [
-  { name: 'Library', path: '/dashboard', icon: Music },
-  { name: 'Analytics', path: '/dashboard/analytics', icon: BarChart3 },
-  { name: 'Earnings', path: '/dashboard/earnings', icon: DollarSign },
-  { name: 'Profile', path: '/dashboard/profile', icon: User },
-  { name: 'Settings', path: '/dashboard/settings', icon: Settings },
-];
+const getSidebarItems = (role: 'creator' | 'artist') => {
+  // Common items for both roles
+  const commonItems = [
+    { name: 'Profile', path: '/dashboard/profile', icon: User },
+    { name: 'Settings', path: '/dashboard/settings', icon: Settings },
+    { name: 'Invites', path: '/dashboard/invites', icon: Users },
+  ];
+
+  // Role-specific items
+  if (role === 'creator') {
+    return [
+      { name: 'Library', path: '/dashboard/music', icon: Music },
+      { name: 'Analytics', path: '/dashboard/analytics', icon: BarChart3 },
+      { name: 'Earnings', path: '/dashboard/earnings', icon: DollarSign },
+      ...commonItems,
+    ];
+  } else {
+    return [
+      { name: 'My Music', path: '/dashboard/my-music', icon: Mic },
+      { name: 'Royalties', path: '/dashboard/royalties', icon: DollarSign },
+      { name: 'Usage Analytics', path: '/dashboard/music-analytics', icon: BarChart3 },
+      ...commonItems,
+    ];
+  }
+};
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
-  const { user, logout } = useAuth();
-
+  const navigate = useNavigate();
+  const { user, logout, activeRole, setActiveRole } = useAuth();
+  
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+  
+  const sidebarItems = getSidebarItems(activeRole);
+  
+  const handleRoleSwitch = (role: 'creator' | 'artist') => {
+    if (role !== activeRole) {
+      setActiveRole(role);
+      
+      // Navigate to the appropriate dashboard based on the role
+      if (role === 'creator') {
+        navigate('/dashboard/music');
+      } else {
+        navigate('/dashboard/my-music');
+      }
+    }
+  };
+  
+  const hasDualRole = user?.profile?.has_dual_role;
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -88,9 +136,49 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
-            <div className="text-xs inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              {user?.role === 'creator' ? 'Content Creator' : 'Music Artist'}
-            </div>
+            
+            {/* Role selection for users with dual roles */}
+            {hasDualRole ? (
+              <div className="mt-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-between">
+                      <span className="flex items-center">
+                        {activeRole === 'creator' ? (
+                          <Brush className="h-3.5 w-3.5 mr-1.5" />
+                        ) : (
+                          <Mic className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        {activeRole === 'creator' ? 'Creator Mode' : 'Artist Mode'}
+                      </span>
+                      <Badge variant="secondary" className="ml-2 text-xs">Switch</Badge>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => handleRoleSwitch('creator')}
+                      className={cn(activeRole === 'creator' && "bg-muted")}
+                    >
+                      <Brush className="h-4 w-4 mr-2" />
+                      Creator Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleRoleSwitch('artist')}
+                      className={cn(activeRole === 'artist' && "bg-muted")}
+                    >
+                      <Mic className="h-4 w-4 mr-2" />
+                      Artist Dashboard
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : (
+              <div className="text-xs inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                {user?.role === 'creator' ? 'Content Creator' : 'Music Artist'}
+              </div>
+            )}
           </div>
 
           <Separator />

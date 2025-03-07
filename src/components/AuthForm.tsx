@@ -23,9 +23,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email" }),
@@ -39,17 +41,20 @@ const registerSchema = z.object({
   role: z.enum(["creator", "artist"], { 
     required_error: "Please select a role" 
   }),
+  inviteCode: z.string().min(6, { message: "Please enter a valid invite code" }),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 type RegisterValues = z.infer<typeof registerSchema>;
 
 const AuthForm: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<'checking' | 'valid' | 'invalid' | 'idle'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const mode = searchParams.get('mode') || 'login';
+  const inviteParam = searchParams.get('invite') || '';
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { login, register } = useAuth();
 
   const loginForm = useForm<LoginValues>({
@@ -67,23 +72,62 @@ const AuthForm: React.FC = () => {
       email: "",
       password: "",
       role: "creator",
+      inviteCode: inviteParam,
     },
   });
 
+  // Check invite code validity
+  const checkInviteCode = async (code: string) => {
+    if (!code || code.length < 6) {
+      setInviteStatus('idle');
+      return;
+    }
+    
+    setInviteStatus('checking');
+    
+    try {
+      const { data, error } = await supabase
+        .from('invite_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_used', false)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data && (!data.expires_at || new Date(data.expires_at) > new Date())) {
+        setInviteStatus('valid');
+        setErrorMessage(null);
+      } else {
+        setInviteStatus('invalid');
+        setErrorMessage('This invite code is invalid or has expired');
+      }
+    } catch (error) {
+      console.error('Error checking invite code:', error);
+      setInviteStatus('invalid');
+      setErrorMessage('This invite code is invalid or has already been used');
+    }
+  };
+
+  React.useEffect(() => {
+    if (inviteParam) {
+      registerForm.setValue('inviteCode', inviteParam);
+      checkInviteCode(inviteParam);
+    }
+  }, [inviteParam]);
+
   const handleLogin = async (values: LoginValues) => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       await login(values.email, values.password);
-      toast({
-        title: "Login successful",
-        description: "Welcome back to MelodyShare!",
-      });
+      toast.success('Successfully logged in');
       navigate('/dashboard');
-    } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "Please check your credentials and try again.",
-        variant: "destructive",
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setErrorMessage(error.message || 'Failed to log in');
+      toast.error('Login failed', {
+        description: error.message || 'Please check your credentials and try again',
       });
     } finally {
       setIsLoading(false);
@@ -92,22 +136,64 @@ const AuthForm: React.FC = () => {
 
   const handleRegister = async (values: RegisterValues) => {
     setIsLoading(true);
+    setErrorMessage(null);
+    
     try {
+      // Validate invite code first
+      const { data: inviteData, error: inviteError } = await supabase
+        .from('invite_codes')
+        .select('*')
+        .eq('code', values.inviteCode)
+        .eq('is_used', false)
+        .single();
+      
+      if (inviteError || !inviteData) {
+        throw new Error('Invalid or expired invite code');
+      }
+      
+      if (inviteData.expires_at && new Date(inviteData.expires_at) < new Date()) {
+        throw new Error('This invite code has expired');
+      }
+      
+      // Register the user
       await register(values.name, values.email, values.password, values.role);
-      toast({
-        title: "Registration successful",
-        description: "Welcome to MelodyShare!",
-      });
-      navigate('/dashboard');
-    } catch (error) {
-      toast({
-        title: "Registration failed",
-        description: "Please check your information and try again.",
-        variant: "destructive",
+      
+      // Get the newly registered user
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // Use the invite code
+        const { data: useInviteResult, error: useInviteError } = await supabase
+          .rpc('use_invite_code', {
+            code_to_use: values.inviteCode,
+            user_id: session.user.id
+          });
+        
+        if (useInviteError) {
+          console.error('Error using invite code:', useInviteError);
+        }
+        
+        toast.success('Registration successful!', {
+          description: 'Your account has been created'
+        });
+        
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      setErrorMessage(error.message || 'Failed to register');
+      toast.error('Registration failed', {
+        description: error.message || 'Please check your information and try again',
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const switchMode = (newMode: 'login' | 'register') => {
+    const params = new URLSearchParams(searchParams);
+    params.set('mode', newMode);
+    setSearchParams(params);
   };
 
   return (
@@ -120,10 +206,17 @@ const AuthForm: React.FC = () => {
           <CardDescription className="text-center">
             {mode === 'login' 
               ? 'Sign in to access your account' 
-              : 'Join MelodyShare to start earning with your content'}
+              : 'Join ShortsRev to start earning with your content'}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {errorMessage && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+          
           {mode === 'login' ? (
             <Form {...loginForm}>
               <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
@@ -168,6 +261,40 @@ const AuthForm: React.FC = () => {
           ) : (
             <Form {...registerForm}>
               <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
+                <FormField
+                  control={registerForm.control}
+                  name="inviteCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Invite Code</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            placeholder="Enter your invite code" 
+                            {...field} 
+                            onChange={(e) => {
+                              field.onChange(e);
+                              checkInviteCode(e.target.value);
+                            }}
+                            className={inviteStatus === 'valid' ? 'pr-10 border-green-500' : 
+                                      inviteStatus === 'invalid' ? 'pr-10 border-red-500' : ''}
+                          />
+                          {inviteStatus === 'checking' && (
+                            <Loader2 className="h-4 w-4 absolute right-3 top-3 animate-spin text-muted-foreground" />
+                          )}
+                          {inviteStatus === 'valid' && (
+                            <CheckCircle2 className="h-4 w-4 absolute right-3 top-3 text-green-500" />
+                          )}
+                          {inviteStatus === 'invalid' && (
+                            <AlertCircle className="h-4 w-4 absolute right-3 top-3 text-red-500" />
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <FormField
                   control={registerForm.control}
                   name="name"
@@ -237,7 +364,11 @@ const AuthForm: React.FC = () => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  className="w-full mt-2" 
+                  disabled={isLoading || inviteStatus === 'invalid' || inviteStatus === 'checking'}
+                >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -255,16 +386,24 @@ const AuthForm: React.FC = () => {
           {mode === 'login' ? (
             <p className="text-sm text-muted-foreground">
               Don't have an account?{' '}
-              <a href="/auth?mode=register" className="text-primary hover:underline">
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-primary" 
+                onClick={() => switchMode('register')}
+              >
                 Sign up
-              </a>
+              </Button>
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
               Already have an account?{' '}
-              <a href="/auth?mode=login" className="text-primary hover:underline">
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-primary" 
+                onClick={() => switchMode('login')}
+              >
                 Sign in
-              </a>
+              </Button>
             </p>
           )}
         </CardFooter>
