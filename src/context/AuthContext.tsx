@@ -15,6 +15,11 @@ interface Profile {
 
 interface UserWithProfile extends User {
   profile?: Profile;
+  // Add these properties for compatibility with existing code
+  name?: string;
+  avatar?: string;
+  role?: 'creator' | 'artist';
+  email?: string;
 }
 
 interface AuthContextType {
@@ -54,14 +59,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', currentSession.user.id)
             .single();
           
-          // Set user with profile
+          // Set user with profile and compatibility properties
           setUser({
             ...currentSession.user,
-            profile: profile || undefined
+            profile: profile || undefined,
+            name: profile?.full_name || currentSession.user.email?.split('@')[0],
+            avatar: profile?.avatar_url,
+            role: (currentSession.user.user_metadata?.role as 'creator' | 'artist') || 'creator',
+            email: currentSession.user.email
           });
         } catch (error) {
           console.error('Error fetching profile:', error);
-          setUser(currentSession.user);
+          setUser({
+            ...currentSession.user,
+            name: currentSession.user.email?.split('@')[0],
+            role: (currentSession.user.user_metadata?.role as 'creator' | 'artist') || 'creator',
+            email: currentSession.user.email
+          });
         }
       }
       
@@ -87,11 +101,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             setUser({
               ...currentSession.user,
-              profile: profile || undefined
+              profile: profile || undefined,
+              name: profile?.full_name || currentSession.user.email?.split('@')[0],
+              avatar: profile?.avatar_url,
+              role: (currentSession.user.user_metadata?.role as 'creator' | 'artist') || 'creator',
+              email: currentSession.user.email
             });
           } catch (error) {
             console.error('Error fetching profile:', error);
-            setUser(currentSession?.user || null);
+            setUser({
+              ...currentSession.user || null,
+              name: currentSession.user.email?.split('@')[0],
+              role: (currentSession.user.user_metadata?.role as 'creator' | 'artist') || 'creator',
+              email: currentSession.user.email
+            });
           }
         } else {
           setUser(null);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Card,
@@ -6,6 +5,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Tabs,
@@ -14,6 +14,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -36,6 +37,7 @@ import { useFadeIn } from '@/lib/animations';
 import { useEarnings } from '@/hooks/useEarnings';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { Json } from '@/integrations/supabase/types';
 
 interface Transaction {
   id: string;
@@ -44,6 +46,8 @@ interface Transaction {
   payment_method: string;
   transaction_date: string;
   completed_date?: string;
+  payment_details?: Json;
+  user_id?: string;
 }
 
 const formatDate = (dateString: string) => {
@@ -101,9 +105,13 @@ const Earnings = () => {
         
       if (error) throw error;
       
-      setTransactions(data || []);
+      const typedData = data?.map(item => ({
+        ...item,
+        status: item.status as 'pending' | 'processing' | 'completed' | 'failed'
+      })) || [];
       
-      // If no transactions, create some example ones
+      setTransactions(typedData);
+      
       if (!data || data.length === 0) {
         createExampleTransactions();
       }
@@ -119,7 +127,6 @@ const Earnings = () => {
     if (!user) return;
     
     try {
-      // Create sample transactions
       const sampleTransactions = [
         {
           user_id: user.id,
@@ -127,7 +134,7 @@ const Earnings = () => {
           status: 'completed',
           payment_method: 'paypal',
           payment_details: { email: user.email },
-          transaction_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
+          transaction_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
           completed_date: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString()
         },
         {
@@ -136,7 +143,7 @@ const Earnings = () => {
           status: 'completed',
           payment_method: 'stripe',
           payment_details: { card: '**** 4242' },
-          transaction_date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days ago
+          transaction_date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
           completed_date: new Date(Date.now() - 59 * 24 * 60 * 60 * 1000).toISOString()
         },
         {
@@ -155,11 +162,9 @@ const Earnings = () => {
         
       if (error) throw error;
       
-      // Refresh transactions list
       fetchTransactions();
     } catch (err: any) {
       console.error('Error creating example transactions:', err);
-      // We don't show errors for this as it's just sample data
     }
   };
 
@@ -184,7 +189,6 @@ const Earnings = () => {
     }
     
     try {
-      // Check if user has a payment method
       const { data: paymentMethods, error: pmError } = await supabase
         .from('payment_methods')
         .select('*')
@@ -197,7 +201,6 @@ const Earnings = () => {
         return;
       }
       
-      // Create withdrawal transaction
       const { error } = await supabase
         .from('transactions')
         .insert([
@@ -214,7 +217,6 @@ const Earnings = () => {
       
       toast.success(`Withdrawal request for $${withdrawAmount} submitted successfully`);
       
-      // Clear withdrawal amount and refresh transactions
       setWithdrawAmount(0);
       fetchTransactions();
     } catch (err: any) {
@@ -250,7 +252,6 @@ const Earnings = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Earnings</h1>
@@ -284,7 +285,6 @@ const Earnings = () => {
         </div>
       </div>
       
-      {/* Summary Cards */}
       <div 
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
         ref={summaryAnimation.ref}
@@ -329,7 +329,6 @@ const Earnings = () => {
         </Card>
       </div>
       
-      {/* Earnings Overview & Withdrawal */}
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Earnings Overview</TabsTrigger>
@@ -495,7 +494,6 @@ const Earnings = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Transactions Table */}
       <div 
         className="space-y-4" 
         ref={transactionsAnimation.ref}
