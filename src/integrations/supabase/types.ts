@@ -47,6 +47,54 @@ export type Database = {
           },
         ]
       }
+      invite_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_admin_generated: boolean | null
+          is_used: boolean | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_admin_generated?: boolean | null
+          is_used?: boolean | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_admin_generated?: boolean | null
+          is_used?: boolean | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invite_codes_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "user_analytics"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       payment_methods: {
         Row: {
           created_at: string | null
@@ -87,7 +135,13 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           full_name: string | null
+          has_dual_role: boolean | null
           id: string
+          invite_code: string | null
+          invited_by: string | null
+          invites_available: number | null
+          role: string
+          secondary_role: string | null
           updated_at: string | null
           username: string | null
           youtube_channel_id: string | null
@@ -97,7 +151,13 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           full_name?: string | null
+          has_dual_role?: boolean | null
           id: string
+          invite_code?: string | null
+          invited_by?: string | null
+          invites_available?: number | null
+          role?: string
+          secondary_role?: string | null
           updated_at?: string | null
           username?: string | null
           youtube_channel_id?: string | null
@@ -107,7 +167,13 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           full_name?: string | null
+          has_dual_role?: boolean | null
           id?: string
+          invite_code?: string | null
+          invited_by?: string | null
+          invites_available?: number | null
+          role?: string
+          secondary_role?: string | null
           updated_at?: string | null
           username?: string | null
           youtube_channel_id?: string | null
@@ -118,6 +184,20 @@ export type Database = {
             foreignKeyName: "profiles_id_fkey"
             columns: ["id"]
             isOneToOne: true
+            referencedRelation: "user_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_invite_code_fkey"
+            columns: ["invite_code"]
+            isOneToOne: false
+            referencedRelation: "invite_codes"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
             referencedRelation: "user_analytics"
             referencedColumns: ["user_id"]
           },
@@ -221,7 +301,13 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      use_invite_code: {
+        Args: {
+          code_to_use: string
+          user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

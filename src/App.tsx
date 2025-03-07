@@ -8,8 +8,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
-
-// Create a dashboard page and login page
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 
@@ -27,7 +25,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/dashboard/*" element={<Dashboard />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/invite/:code" element={<Auth />} /> {/* New route for invite links */}
+            <Route path="/invite/:code" element={<Auth />} /> {/* Route for invite links */}
             <Route path="/about" element={<Index />} /> {/* Temporary redirect to index */}
             <Route path="/how-it-works" element={<Index />} /> {/* Temporary redirect to index */}
             <Route path="/pricing" element={<Index />} /> {/* Temporary redirect to index */}

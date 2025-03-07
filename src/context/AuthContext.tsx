@@ -19,6 +19,21 @@ interface Profile {
   invites_available: number;
 }
 
+interface InviteCode {
+  id: string;
+  code: string;
+  created_by: string;
+  is_used: boolean;
+  used_by?: string;
+  created_at: string;
+  expires_at?: string;
+  is_admin_generated: boolean;
+  used_by_profile?: {
+    full_name: string;
+    username: string;
+  };
+}
+
 interface UserWithProfile extends User {
   profile?: Profile;
   // Add these properties for compatibility with existing code
@@ -36,12 +51,12 @@ interface AuthContextType {
   activeRole: 'creator' | 'artist';
   setActiveRole: (role: 'creator' | 'artist') => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: 'creator' | 'artist') => Promise<void>;
+  register: (name: string, email: string, password: string, role: 'creator' | 'artist', inviteCode: string) => Promise<void>;
   logout: () => Promise<void>;
   getUserProfile: () => Promise<Profile | null>;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
   generateInviteCode: () => Promise<string | null>;
-  getInviteCodes: () => Promise<any[]>;
+  getInviteCodes: () => Promise<InviteCode[]>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -73,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Set user with profile and compatibility properties
           setUser({
             ...currentSession.user,
-            profile: profile || undefined,
+            profile: profile as Profile,
             name: profile?.full_name || currentSession.user.email?.split('@')[0],
             avatar: profile?.avatar_url,
             role: profile?.role || (currentSession.user.user_metadata?.role as 'creator' | 'artist') || 'creator',
@@ -82,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           // Set active role based on user's primary role
           if (profile?.role) {
-            setActiveRole(profile.role);
+            setActiveRole(profile.role as 'creator' | 'artist');
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
@@ -117,16 +132,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             setUser({
               ...currentSession.user,
-              profile: profile || undefined,
+              profile: profile as Profile,
               name: profile?.full_name || currentSession.user.email?.split('@')[0],
               avatar: profile?.avatar_url,
-              role: profile?.role || (currentSession.user.user_metadata?.role as 'creator' | 'artist') || 'creator',
+              role: profile?.role as 'creator' | 'artist' || (currentSession.user.user_metadata?.role as 'creator' | 'artist') || 'creator',
               email: currentSession.user.email
             });
 
             // Set active role based on user's primary role
             if (profile?.role) {
-              setActiveRole(profile.role);
+              setActiveRole(profile.role as 'creator' | 'artist');
             }
           } catch (error) {
             console.error('Error fetching profile:', error);
@@ -171,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (name: string, email: string, password: string, role: 'creator' | 'artist') => {
+  const register = async (name: string, email: string, password: string, role: 'creator' | 'artist', inviteCode: string) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -288,21 +303,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Generate a random invite code
       const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // Insert the invite code
-      const { data, error } = await supabase
-        .from('invite_codes')
-        .insert({
-          code: randomCode,
-          created_by: user.id,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // Expires in 7 days
-        })
-        .select()
-        .single();
+      // Insert the invite code - using RPC call since we need custom types
+      const { data, error } = await supabase.rpc('create_invite_code', {
+        code_value: randomCode,
+        creator_id: user.id,
+        expiry_days: 7
+      });
       
-      if (error) throw error;
+      if (error) {
+        // Fallback to direct table access if RPC isn't available
+        const { data: insertData, error: insertError } = await supabase
+          .from('invite_codes')
+          .insert({
+            code: randomCode,
+            created_by: user.id,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          })
+          .select('code')
+          .single();
+        
+        if (insertError) throw insertError;
+        
+        // Update invites available
+        await supabase
+          .from('profiles')
+          .update({ invites_available: profile.invites_available - 1 })
+          .eq('id', user.id);
+        
+        toast.success('Invite code generated successfully');
+        return insertData.code;
+      }
       
       toast.success('Invite code generated successfully');
-      return data.code;
+      return randomCode;
     } catch (error: any) {
       console.error('Error generating invite code:', error);
       toast.error(error.message || 'Failed to generate invite code');
@@ -310,17 +343,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const getInviteCodes = async () => {
+  const getInviteCodes = async (): Promise<InviteCode[]> => {
     if (!user) return [];
     
     try {
-      const { data, error } = await supabase
-        .from('invite_codes')
-        .select('*, used_by_profile:profiles!used_by(full_name, username)')
-        .eq('created_by', user.id);
+      const { data, error } = await supabase.rpc('get_user_invite_codes', {
+        user_id_param: user.id
+      });
       
-      if (error) throw error;
-      return data || [];
+      if (error) {
+        // Fallback to direct query if RPC isn't available
+        const { data: directData, error: directError } = await supabase
+          .from('invite_codes')
+          .select('*, used_by_profile:profiles!used_by(full_name, username)')
+          .eq('created_by', user.id);
+        
+        if (directError) throw directError;
+        return directData as InviteCode[];
+      }
+      
+      return data as InviteCode[] || [];
     } catch (error) {
       console.error('Error fetching invite codes:', error);
       return [];

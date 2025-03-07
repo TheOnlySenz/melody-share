@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +28,18 @@ import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from '@/integrations/supabase/client';
 
+// Define interface for invite code to use throughout the component
+interface InviteCode {
+  id: string;
+  code: string;
+  created_by: string;
+  is_used: boolean;
+  used_by?: string;
+  created_at: string;
+  expires_at?: string;
+  is_admin_generated: boolean;
+}
+
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
@@ -49,11 +60,12 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 const AuthForm: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { code: inviteParamFromRoute } = useParams<{ code?: string }>();
   const [isLoading, setIsLoading] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<'checking' | 'valid' | 'invalid' | 'idle'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const mode = searchParams.get('mode') || 'login';
-  const inviteParam = searchParams.get('invite') || '';
+  const inviteParam = searchParams.get('invite') || inviteParamFromRoute || '';
   const navigate = useNavigate();
   const { login, register } = useAuth();
 
@@ -86,21 +98,37 @@ const AuthForm: React.FC = () => {
     setInviteStatus('checking');
     
     try {
-      const { data, error } = await supabase
-        .from('invite_codes')
-        .select('*')
-        .eq('code', code)
-        .eq('is_used', false)
-        .single();
+      // Use RPC function if available
+      const { data, error } = await supabase.rpc('validate_invite_code', {
+        code_to_check: code
+      });
       
-      if (error) throw error;
-      
-      if (data && (!data.expires_at || new Date(data.expires_at) > new Date())) {
-        setInviteStatus('valid');
-        setErrorMessage(null);
+      if (error) {
+        // Fallback to direct query if RPC not available
+        const { data: directData, error: directError } = await supabase
+          .from('invite_codes')
+          .select('*')
+          .eq('code', code)
+          .eq('is_used', false)
+          .single();
+        
+        if (directError) throw directError;
+        
+        if (directData && (!directData.expires_at || new Date(directData.expires_at) > new Date())) {
+          setInviteStatus('valid');
+          setErrorMessage(null);
+        } else {
+          setInviteStatus('invalid');
+          setErrorMessage('This invite code is invalid or has expired');
+        }
       } else {
-        setInviteStatus('invalid');
-        setErrorMessage('This invite code is invalid or has expired');
+        if (data) {
+          setInviteStatus('valid');
+          setErrorMessage(null);
+        } else {
+          setInviteStatus('invalid');
+          setErrorMessage('This invite code is invalid or has expired');
+        }
       }
     } catch (error) {
       console.error('Error checking invite code:', error);
@@ -109,7 +137,7 @@ const AuthForm: React.FC = () => {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (inviteParam) {
       registerForm.setValue('inviteCode', inviteParam);
       checkInviteCode(inviteParam);
@@ -140,23 +168,30 @@ const AuthForm: React.FC = () => {
     
     try {
       // Validate invite code first
-      const { data: inviteData, error: inviteError } = await supabase
-        .from('invite_codes')
-        .select('*')
-        .eq('code', values.inviteCode)
-        .eq('is_used', false)
-        .single();
+      const { data: validationResult, error: validationError } = await supabase.rpc('validate_invite_code', {
+        code_to_check: values.inviteCode
+      });
       
-      if (inviteError || !inviteData) {
-        throw new Error('Invalid or expired invite code');
-      }
-      
-      if (inviteData.expires_at && new Date(inviteData.expires_at) < new Date()) {
-        throw new Error('This invite code has expired');
+      if (validationError || !validationResult) {
+        // Fallback to direct query
+        const { data: inviteData, error: inviteError } = await supabase
+          .from('invite_codes')
+          .select('*')
+          .eq('code', values.inviteCode)
+          .eq('is_used', false)
+          .single();
+        
+        if (inviteError || !inviteData) {
+          throw new Error('Invalid or expired invite code');
+        }
+        
+        if (inviteData.expires_at && new Date(inviteData.expires_at) < new Date()) {
+          throw new Error('This invite code has expired');
+        }
       }
       
       // Register the user
-      await register(values.name, values.email, values.password, values.role);
+      await register(values.name, values.email, values.password, values.role, values.inviteCode);
       
       // Get the newly registered user
       const { data: { session } } = await supabase.auth.getSession();
@@ -218,6 +253,7 @@ const AuthForm: React.FC = () => {
           )}
           
           {mode === 'login' ? (
+            
             <Form {...loginForm}>
               <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                 <FormField
@@ -259,6 +295,7 @@ const AuthForm: React.FC = () => {
               </form>
             </Form>
           ) : (
+            
             <Form {...registerForm}>
               <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
                 <FormField
