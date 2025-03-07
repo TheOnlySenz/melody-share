@@ -9,22 +9,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useFadeIn } from '@/lib/animations';
 import { formatDistance } from 'date-fns';
 
-interface InviteCode {
-  id: string;
-  code: string;
-  is_used: boolean;
-  used_by: string | null;
-  created_at: string;
-  expires_at: string | null;
-  used_by_profile?: {
-    full_name: string;
-    username: string;
-  } | null;
-}
-
 const InvitesManagement = () => {
   const { user, generateInviteCode, getInviteCodes } = useAuth();
-  const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([]);
+  const [inviteCodes, setInviteCodes] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -39,7 +26,7 @@ const InvitesManagement = () => {
   const fetchInviteCodes = async () => {
     setIsLoading(true);
     const codes = await getInviteCodes();
-    setInviteCodes(codes);
+    setInviteCodes(codes as any[]);
     setIsLoading(false);
   };
   
@@ -56,13 +43,13 @@ const InvitesManagement = () => {
   };
   
   const copyToClipboard = (code: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/auth?mode=register&invite=${code}`);
+    navigator.clipboard.writeText(`${window.location.origin}/invite/${code}`);
     setCopiedCode(code);
     toast.success('Invite link copied to clipboard');
     setTimeout(() => setCopiedCode(null), 2000);
   };
   
-  const getInviteStatus = (inviteCode: InviteCode) => {
+  const getInviteStatus = (inviteCode: any) => {
     if (inviteCode.is_used) {
       return {
         label: 'Used',

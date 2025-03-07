@@ -1,226 +1,347 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Music, User } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Music2,
+  MusicIcon,
+  Menu,
+  X,
+  LogOut,
+  User,
+  Settings,
+  Users,
+  LayoutDashboard,
+  ChevronDown,
+  Check,
+  Shield,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { cn } from '@/lib/utils';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useMobile } from '@/hooks/useMobile';
 
-const Navbar: React.FC = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user, logout } = useAuth();
-  const location = useLocation();
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+const Navbar = () => {
+  const { user, isAuthenticated, logout, activeRole, setActiveRole } = useAuth();
+  const isMobile = useMobile();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   
+  // Check if user has admin privileges
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
+    const checkAdminStatus = async () => {
+      if (!user) {
+        setIsAdminUser(false);
+        return;
+      }
+      
+      try {
+        // Check if user has admin role in profiles table
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) throw error;
+        setIsAdminUser(!!data?.is_admin);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdminUser(false);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [user]);
 
-  const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'How It Works', path: '/how-it-works' },
-    { name: 'Pricing', path: '/pricing' },
-  ];
-
-  const authLinks = isAuthenticated
-    ? [{ name: 'Dashboard', path: '/dashboard' }]
-    : [{ name: 'Login', path: '/auth' }];
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
 
   return (
-    <nav 
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 py-4 transition-all duration-300',
-        isScrolled 
-          ? 'bg-white/90 backdrop-blur-md shadow-subtle' 
-          : 'bg-transparent'
-      )}
-    >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <Music className="h-8 w-8 text-primary animate-fade-in" />
-            <span className="text-xl font-semibold text-foreground animate-fade-in animate-delay-100">
-              ShortsRev
-            </span>
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <Link to="/" className="mr-4 flex items-center space-x-2">
+          <MusicIcon className="h-6 w-6" />
+          <span className="text-xl font-semibold">ShortsRev</span>
+        </Link>
+        
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex flex-1 items-center space-x-1">
+          <Link to="/" className="px-4 py-2 text-sm font-medium transition-colors hover:text-primary">
+            Home
           </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center space-x-1">
-            {navLinks.map((link, index) => (
-              <Link
-                key={link.name}
-                to={link.path}
-                className={cn(
-                  'px-3 py-2 rounded-md text-sm font-medium transition-colors animate-fade-in',
-                  `animate-delay-${(index + 1) * 100}`,
-                  location.pathname === link.path
-                    ? 'text-primary'
-                    : 'text-foreground/80 hover:text-foreground hover:bg-muted'
-                )}
-              >
-                {link.name}
-              </Link>
-            ))}
-            
-            {/* Auth / Dashboard */}
-            {authLinks.map((link, index) => (
-              <Link
-                key={link.name}
-                to={link.path}
-                className={cn(
-                  'px-3 py-2 rounded-md text-sm font-medium transition-colors animate-fade-in',
-                  `animate-delay-${(index + navLinks.length + 1) * 100}`,
-                  location.pathname === link.path
-                    ? 'text-primary'
-                    : 'text-foreground/80 hover:text-foreground hover:bg-muted'
-                )}
-              >
-                {link.name}
-              </Link>
-            ))}
-            
-            {/* Register Button or User Menu */}
-            {isAuthenticated ? (
-              <div className="relative ml-3 animate-fade-in animate-delay-500">
-                <div className="flex items-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-sm font-medium"
-                    onClick={logout}
-                  >
-                    Sign Out
-                  </Button>
-                  <Link to="/dashboard/profile" className="flex items-center">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                      {user?.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <User className="h-5 w-5 text-primary" />
+          <Link to="/about" className="px-4 py-2 text-sm font-medium transition-colors hover:text-primary">
+            About
+          </Link>
+          <Link to="/how-it-works" className="px-4 py-2 text-sm font-medium transition-colors hover:text-primary">
+            How it Works
+          </Link>
+          <Link to="/pricing" className="px-4 py-2 text-sm font-medium transition-colors hover:text-primary">
+            Pricing
+          </Link>
+        </nav>
+        
+        {/* Desktop Right-Aligned Elements */}
+        <div className="hidden md:flex items-center space-x-4">
+          {isAuthenticated ? (
+            <>
+              {user?.profile?.has_dual_role && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-9">
+                      <span>{activeRole === 'creator' ? 'Creator' : 'Artist'}</span>
+                      <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setActiveRole('creator')}>
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>Creator</span>
+                      {activeRole === 'creator' && (
+                        <Check className="ml-auto h-4 w-4" />
                       )}
-                    </div>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <Link to="/auth?mode=register" className="animate-fade-in animate-delay-500">
-                <Button size="sm" className="ml-3">
-                  Sign Up
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setActiveRole('artist')}>
+                      <Music2 className="mr-2 h-4 w-4" />
+                      <span>Artist</span>
+                      {activeRole === 'artist' && (
+                        <Check className="ml-auto h-4 w-4" />
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              
+              <Link to="/dashboard">
+                <Button variant="ghost" className="h-9">
+                  Dashboard
                 </Button>
               </Link>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-md p-2 text-foreground hover:bg-secondary focus:outline-none"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <span className="sr-only">Open main menu</span>
-              {isMobileMenuOpen ? (
-                <X className="block h-6 w-6" aria-hidden="true" />
-              ) : (
-                <Menu className="block h-6 w-6" aria-hidden="true" />
+              
+              {isAdminUser && (
+                <Link to="/admin">
+                  <Button variant="ghost" className="h-9">
+                    Admin
+                  </Button>
+                </Link>
               )}
-            </button>
-          </div>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user.profile?.avatar_url || ''} alt={user.profile?.full_name || ''} />
+                      <AvatarFallback>
+                        {user.profile?.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.profile?.full_name || user.email?.split('@')[0]}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/profile">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  {isAdminUser && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Admin</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Link to="/auth">
+              <Button>Sign In</Button>
+            </Link>
+          )}
         </div>
+        
+        {/* Mobile Menu Button */}
+        <Button
+          variant="ghost"
+          className="ml-auto mr-2 h-9 w-9 md:hidden"
+          onClick={toggleMenu}
+        >
+          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
       </div>
-
+      
       {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-background border-t border-border animate-fade-in">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.path}
-                className={cn(
-                  'block px-3 py-2 rounded-md text-base font-medium',
-                  location.pathname === link.path
-                    ? 'text-primary bg-primary/5'
-                    : 'text-foreground/80 hover:text-foreground hover:bg-muted'
-                )}
-              >
-                {link.name}
-              </Link>
-            ))}
+      {isOpen && isMobile && (
+        <div className="container md:hidden py-4 border-t">
+          <nav className="flex flex-col space-y-2">
+            <Link
+              to="/"
+              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted"
+              onClick={() => setIsOpen(false)}
+            >
+              Home
+            </Link>
+            <Link
+              to="/about"
+              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted"
+              onClick={() => setIsOpen(false)}
+            >
+              About
+            </Link>
+            <Link
+              to="/how-it-works"
+              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted"
+              onClick={() => setIsOpen(false)}
+            >
+              How it Works
+            </Link>
+            <Link
+              to="/pricing"
+              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted"
+              onClick={() => setIsOpen(false)}
+            >
+              Pricing
+            </Link>
             
-            {/* Auth Navigation */}
-            {authLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.path}
-                className={cn(
-                  'block px-3 py-2 rounded-md text-base font-medium',
-                  location.pathname === link.path
-                    ? 'text-primary bg-primary/5'
-                    : 'text-foreground/80 hover:text-foreground hover:bg-muted'
-                )}
-              >
-                {link.name}
-              </Link>
-            ))}
-            
-            {/* Register Button */}
-            {!isAuthenticated && (
-              <Link
-                to="/auth?mode=register"
-                className="block px-3 py-2 mt-2 text-base font-medium text-primary hover:bg-primary/5 rounded-md"
-              >
-                Sign Up
-              </Link>
-            )}
-            
-            {/* User Profile & Logout */}
-            {isAuthenticated && (
-              <div className="pt-4 pb-3 border-t border-border">
-                <div className="flex items-center px-4">
-                  <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                      {user?.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <User className="h-6 w-6 text-primary" />
-                      )}
+            {isAuthenticated ? (
+              <>
+                <div className="h-px bg-border my-2" />
+                
+                {user?.profile?.has_dual_role && (
+                  <div className="px-4 py-2">
+                    <div className="text-sm font-medium text-muted-foreground mb-2">Current Role</div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant={activeRole === 'creator' ? 'default' : 'outline'}
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setActiveRole('creator')}
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        Creator
+                      </Button>
+                      <Button
+                        variant={activeRole === 'artist' ? 'default' : 'outline'}
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setActiveRole('artist')}
+                      >
+                        <Music2 className="mr-2 h-4 w-4" />
+                        Artist
+                      </Button>
                     </div>
                   </div>
-                  <div className="ml-3">
-                    <div className="text-base font-medium text-foreground">{user?.name}</div>
-                    <div className="text-sm font-medium text-muted-foreground">{user?.email}</div>
+                )}
+                
+                <Link
+                  to="/dashboard"
+                  className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted flex items-center"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Link>
+                
+                {isAdminUser && (
+                  <Link
+                    to="/admin"
+                    className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted flex items-center"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin Panel
+                  </Link>
+                )}
+                
+                <Link
+                  to="/dashboard/profile"
+                  className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted flex items-center"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </Link>
+                
+                <Link
+                  to="/dashboard/settings"
+                  className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted flex items-center"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+                
+                <button
+                  className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted flex items-center text-red-500"
+                  onClick={() => {
+                    logout();
+                    setIsOpen(false);
+                  }}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </button>
+                
+                <div className="h-px bg-border my-2" />
+                
+                <div className="px-4 py-2 flex items-center">
+                  <Avatar className="h-9 w-9 mr-2">
+                    <AvatarImage src={user.profile?.avatar_url || ''} alt={user.profile?.full_name || ''} />
+                    <AvatarFallback>
+                      {user.profile?.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium leading-none">{user.profile?.full_name || user.email?.split('@')[0]}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
-                <div className="mt-3 px-2 space-y-1">
-                  <Link
-                    to="/dashboard/profile"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-foreground/80 hover:text-foreground hover:bg-muted"
-                  >
-                    Your Profile
-                  </Link>
-                  <button
-                    onClick={logout}
-                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground/80 hover:text-foreground hover:bg-muted"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                className="px-4 py-2"
+                onClick={() => setIsOpen(false)}
+              >
+                <Button className="w-full">Sign In</Button>
+              </Link>
             )}
-          </div>
+          </nav>
         </div>
       )}
-    </nav>
+    </header>
   );
 };
 
