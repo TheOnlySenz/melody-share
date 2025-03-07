@@ -31,9 +31,10 @@ const Admin = () => {
         
         if (error) throw error;
         
-        setIsAdmin(!!data?.is_admin);
+        setIsAdmin(data?.is_admin || false);
       } catch (error) {
         console.error('Error checking admin status:', error);
+        setIsAdmin(false);
       } finally {
         setCheckingAdmin(false);
       }

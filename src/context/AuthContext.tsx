@@ -190,6 +190,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string, role: 'creator' | 'artist', inviteCode: string) => {
     setIsLoading(true);
     try {
+      // Validate invite code first using our helper function instead of RPC
+      const isValidCode = await supabase
+        .from('invite_codes')
+        .select('*')
+        .eq('code', inviteCode)
+        .eq('is_used', false)
+        .single();
+      
+      if (!isValidCode.data || (isValidCode.data.expires_at && new Date(isValidCode.data.expires_at) < new Date())) {
+        throw new Error('Invalid or expired invite code');
+      }
+      
+      // Register the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -204,10 +217,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       // If an invite code was provided, use it
-      if (inviteCode) {
+      if (inviteCode && data.user) {
         const { data: inviteData, error: inviteError } = await supabase.rpc('use_invite_code', {
           code_to_use: inviteCode,
-          user_id: data.user?.id
+          user_id: data.user.id
         });
         
         if (inviteError) {
@@ -350,7 +363,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('invite_codes')
-        .select('*, used_by_profile:profiles!used_by(full_name, username)')
+        .select(`
+          *,
+          used_by_profile:profiles!used_by(full_name, username)
+        `)
         .eq('created_by', user.id);
       
       if (error) throw error;

@@ -98,37 +98,26 @@ const AuthForm: React.FC = () => {
     setInviteStatus('checking');
     
     try {
-      // Use RPC function if available
-      const { data, error } = await supabase.rpc('validate_invite_code', {
-        code_to_check: code
-      });
+      // Use direct query instead of RPC for validation
+      const { data, error } = await supabase
+        .from('invite_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_used', false)
+        .single();
       
-      if (error) {
-        // Fallback to direct query if RPC not available
-        const { data: directData, error: directError } = await supabase
-          .from('invite_codes')
-          .select('*')
-          .eq('code', code)
-          .eq('is_used', false)
-          .single();
-        
-        if (directError) throw directError;
-        
-        if (directData && (!directData.expires_at || new Date(directData.expires_at) > new Date())) {
-          setInviteStatus('valid');
-          setErrorMessage(null);
-        } else {
-          setInviteStatus('invalid');
-          setErrorMessage('This invite code is invalid or has expired');
-        }
+      if (error || !data) {
+        setInviteStatus('invalid');
+        setErrorMessage('This invite code is invalid or has already been used');
+        return;
+      }
+      
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        setInviteStatus('invalid');
+        setErrorMessage('This invite code has expired');
       } else {
-        if (data) {
-          setInviteStatus('valid');
-          setErrorMessage(null);
-        } else {
-          setInviteStatus('invalid');
-          setErrorMessage('This invite code is invalid or has expired');
-        }
+        setInviteStatus('valid');
+        setErrorMessage(null);
       }
     } catch (error) {
       console.error('Error checking invite code:', error);
@@ -168,26 +157,19 @@ const AuthForm: React.FC = () => {
     
     try {
       // Validate invite code first
-      const { data: validationResult, error: validationError } = await supabase.rpc('validate_invite_code', {
-        code_to_check: values.inviteCode
-      });
+      const { data, error } = await supabase
+        .from('invite_codes')
+        .select('*')
+        .eq('code', values.inviteCode)
+        .eq('is_used', false)
+        .single();
       
-      if (validationError || !validationResult) {
-        // Fallback to direct query
-        const { data: inviteData, error: inviteError } = await supabase
-          .from('invite_codes')
-          .select('*')
-          .eq('code', values.inviteCode)
-          .eq('is_used', false)
-          .single();
-        
-        if (inviteError || !inviteData) {
-          throw new Error('Invalid or expired invite code');
-        }
-        
-        if (inviteData.expires_at && new Date(inviteData.expires_at) < new Date()) {
-          throw new Error('This invite code has expired');
-        }
+      if (error || !data) {
+        throw new Error('Invalid or expired invite code');
+      }
+      
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        throw new Error('This invite code has expired');
       }
       
       // Register the user

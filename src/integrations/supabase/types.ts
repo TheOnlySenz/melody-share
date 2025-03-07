@@ -140,6 +140,7 @@ export type Database = {
           invite_code: string | null
           invited_by: string | null
           invites_available: number | null
+          is_admin: boolean | null
           role: string
           secondary_role: string | null
           updated_at: string | null
@@ -156,6 +157,7 @@ export type Database = {
           invite_code?: string | null
           invited_by?: string | null
           invites_available?: number | null
+          is_admin?: boolean | null
           role?: string
           secondary_role?: string | null
           updated_at?: string | null
@@ -172,6 +174,7 @@ export type Database = {
           invite_code?: string | null
           invited_by?: string | null
           invites_available?: number | null
+          is_admin?: boolean | null
           role?: string
           secondary_role?: string | null
           updated_at?: string | null
