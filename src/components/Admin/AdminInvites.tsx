@@ -104,7 +104,7 @@ const AdminInvites = () => {
       return { label: 'Expired', variant: 'destructive' as const };
     }
     
-    return { label: 'Active', variant: 'success' as const };
+    return { label: 'Active', variant: 'default' as const };
   };
 
   return (

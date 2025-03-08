@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             profile: profile as Profile,
             name: profile?.full_name || currentSession.user.email?.split('@')[0],
             avatar: profile?.avatar_url,
-            role: profile?.role || (currentSession.user.user_metadata?.role as 'creator' | 'artist'),
+            role: profile?.role as 'creator' | 'artist',
             email: currentSession.user.email
           });
 
