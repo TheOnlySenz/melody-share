@@ -130,6 +130,48 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_name: string
+          setting_value: Json
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_name: string
+          setting_value: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_name?: string
+          setting_value?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "song_analytics"
+            referencedColumns: ["artist_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -248,6 +290,218 @@ export type Database = {
           },
         ]
       }
+      royalties: {
+        Row: {
+          amount: number
+          artist_id: string
+          calculation_date: string | null
+          creator_id: string
+          id: string
+          payment_id: string | null
+          song_id: string
+          status: string | null
+          usage_id: string
+        }
+        Insert: {
+          amount: number
+          artist_id: string
+          calculation_date?: string | null
+          creator_id: string
+          id?: string
+          payment_id?: string | null
+          song_id: string
+          status?: string | null
+          usage_id: string
+        }
+        Update: {
+          amount?: number
+          artist_id?: string
+          calculation_date?: string | null
+          creator_id?: string
+          id?: string
+          payment_id?: string | null
+          song_id?: string
+          status?: string | null
+          usage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "royalties_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "royalties_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "song_analytics"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "royalties_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "royalties_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "song_analytics"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "royalties_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "royalties_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "song_analytics"
+            referencedColumns: ["song_id"]
+          },
+          {
+            foreignKeyName: "royalties_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "royalties_usage_id_fkey"
+            columns: ["usage_id"]
+            isOneToOne: false
+            referencedRelation: "song_usages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      song_usages: {
+        Row: {
+          creator_id: string
+          id: string
+          last_updated: string | null
+          song_id: string
+          usage_start_date: string | null
+          verified: boolean | null
+          video_id: string
+          video_title: string | null
+          views_count: number | null
+        }
+        Insert: {
+          creator_id: string
+          id?: string
+          last_updated?: string | null
+          song_id: string
+          usage_start_date?: string | null
+          verified?: boolean | null
+          video_id: string
+          video_title?: string | null
+          views_count?: number | null
+        }
+        Update: {
+          creator_id?: string
+          id?: string
+          last_updated?: string | null
+          song_id?: string
+          usage_start_date?: string | null
+          verified?: boolean | null
+          video_id?: string
+          video_title?: string | null
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_usages_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "song_usages_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "song_analytics"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "song_usages_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "song_analytics"
+            referencedColumns: ["song_id"]
+          },
+          {
+            foreignKeyName: "song_usages_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      songs: {
+        Row: {
+          artist_id: string
+          cover_image_path: string | null
+          file_path: string
+          genre: string | null
+          id: string
+          license_terms: Json | null
+          royalty_split: Json | null
+          status: string | null
+          title: string
+          upload_date: string | null
+        }
+        Insert: {
+          artist_id: string
+          cover_image_path?: string | null
+          file_path: string
+          genre?: string | null
+          id?: string
+          license_terms?: Json | null
+          royalty_split?: Json | null
+          status?: string | null
+          title: string
+          upload_date?: string | null
+        }
+        Update: {
+          artist_id?: string
+          cover_image_path?: string | null
+          file_path?: string
+          genre?: string | null
+          id?: string
+          license_terms?: Json | null
+          royalty_split?: Json | null
+          status?: string | null
+          title?: string
+          upload_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "songs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "songs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "song_analytics"
+            referencedColumns: ["artist_id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -291,6 +545,27 @@ export type Database = {
       }
     }
     Views: {
+      song_analytics: {
+        Row: {
+          artist_id: string | null
+          artist_name: string | null
+          song_id: string | null
+          song_title: string | null
+          total_earnings: number | null
+          total_usages: number | null
+          total_views: number | null
+          unique_creators: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: true
+            referencedRelation: "user_analytics"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       user_analytics: {
         Row: {
           total_approved_earnings: number | null
