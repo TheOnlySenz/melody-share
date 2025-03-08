@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User, AuthError } from '@supabase/supabase-js';
@@ -58,6 +57,8 @@ interface AuthContextType {
   updateProfile: (data: Partial<Profile>) => Promise<void>;
   generateInviteCode: () => Promise<string | null>;
   getInviteCodes: () => Promise<InviteCode[]>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,24 +70,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeRole, setActiveRole] = useState<'creator' | 'artist'>('creator');
 
   useEffect(() => {
-    // Initialize authentication state from Supabase
     const initAuth = async () => {
       setIsLoading(true);
       
-      // Get current session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       
       if (currentSession?.user) {
         try {
-          // Get profile data
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', currentSession.user.id)
             .single();
           
-          // Set user with profile and compatibility properties
           setUser({
             ...currentSession.user,
             profile: profile as Profile,
@@ -96,7 +93,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: currentSession.user.email
           });
 
-          // Set active role based on user's primary role
           if (profile?.role) {
             setActiveRole(profile.role as 'creator' | 'artist');
           }
@@ -114,17 +110,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     };
 
-    // Initialize auth
     initAuth();
     
-    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         
         if (currentSession?.user) {
           try {
-            // Get profile data when auth state changes
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
@@ -140,7 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: currentSession.user.email
             });
 
-            // Set active role based on user's primary role
             if (profile?.role) {
               setActiveRole(profile.role as 'creator' | 'artist');
             }
@@ -161,7 +153,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Cleanup subscription
     return () => {
       subscription.unsubscribe();
     };
@@ -190,7 +181,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string, role: 'creator' | 'artist', inviteCode: string) => {
     setIsLoading(true);
     try {
-      // Validate invite code first using our helper function instead of RPC
       const isValidCode = await supabase
         .from('invite_codes')
         .select('*')
@@ -202,7 +192,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Invalid or expired invite code');
       }
       
-      // Register the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -216,7 +205,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       
-      // If an invite code was provided, use it
       if (inviteCode && data.user) {
         const { data: inviteData, error: inviteError } = await supabase.rpc('use_invite_code', {
           code_to_use: inviteCode,
@@ -282,7 +270,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // Update local user state with new profile data
       if (user.profile) {
         const updatedProfile = {
           ...user.profile,
@@ -312,7 +299,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      // Check if user has available invites
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('invites_available')
@@ -326,10 +312,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
       
-      // Generate a random invite code
       const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // Insert the invite code
       const { data, error } = await supabase
         .from('invite_codes')
         .insert({
@@ -342,7 +326,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // Update invites available
       await supabase
         .from('profiles')
         .update({ invites_available: profile.invites_available - 1 })
@@ -378,6 +361,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Password reset link sent to your email');
+    } catch (error) {
+      const authError = error as AuthError;
+      toast.error(authError.message || 'Failed to send password reset link');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Password updated successfully');
+    } catch (error) {
+      const authError = error as AuthError;
+      toast.error(authError.message || 'Failed to update password');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -392,7 +413,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       getUserProfile,
       updateProfile,
       generateInviteCode,
-      getInviteCodes
+      getInviteCodes,
+      resetPassword,
+      updatePassword
     }}>
       {children}
     </AuthContext.Provider>
