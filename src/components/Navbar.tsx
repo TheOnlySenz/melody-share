@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -28,28 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
-// Create a simple useMobile hook
-const useMobile = () => {
-  const [isMobile, setIsMobile] = useState<boolean>(false);
-  
-  useEffect(() => {
-    const checkMobileScreen = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    // Initial check
-    checkMobileScreen();
-    
-    // Add event listener for window resize
-    window.addEventListener('resize', checkMobileScreen);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', checkMobileScreen);
-  }, []);
-  
-  return isMobile;
-};
+import { useMobile } from '@/hooks/useMobile';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout, activeRole, setActiveRole } = useAuth();
@@ -74,6 +52,7 @@ const Navbar = () => {
           .single();
         
         if (error) throw error;
+        
         setIsAdminUser(!!data?.is_admin);
       } catch (error) {
         console.error('Error checking admin status:', error);
