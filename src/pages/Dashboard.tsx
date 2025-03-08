@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 import MusicLibrary from '@/components/Dashboard/MusicLibrary';
 import Analytics from '@/components/Dashboard/Analytics';
 import Profile from '@/components/Dashboard/Profile';
+import Settings from '@/components/Dashboard/Settings';
 import Payments from '@/components/Dashboard/Payments';
 import Earnings from '@/components/Dashboard/Earnings';
 import MyMusic from '@/components/Dashboard/MyMusic';
@@ -67,7 +68,7 @@ const Dashboard = () => {
           <Route path="/earnings" element={<Earnings />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/payments" element={<Payments />} />
-          <Route path="/settings" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/invites" element={<InvitesManagement />} />
           {/* Redirect artist routes to creator dashboard */}
           <Route path="/my-music" element={<Navigate to="/dashboard/music" replace />} />
@@ -87,7 +88,7 @@ const Dashboard = () => {
         <Route path="/royalties" element={<Royalties />} />
         <Route path="/music-analytics" element={<Analytics />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/invites" element={<InvitesManagement />} />
         {/* Redirect creator routes to artist dashboard */}
         <Route path="/music" element={<Navigate to="/dashboard/my-music" replace />} />

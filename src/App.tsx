@@ -11,6 +11,7 @@ import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/dashboard/*" element={<Dashboard />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/invite/:code" element={<Auth />} /> {/* Route for invite links */}
+            <Route path="/reset-password" element={<ResetPassword />} /> {/* Route for password reset */}
             <Route path="/admin/*" element={<Admin />} /> {/* Admin panel route */}
             <Route path="/about" element={<Index />} /> {/* Temporary redirect to index */}
             <Route path="/how-it-works" element={<Index />} /> {/* Temporary redirect to index */}
