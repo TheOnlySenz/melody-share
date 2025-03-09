@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { CreditCard, DollarSign, Users, ArrowRight, Check, Loader2 } from 'lucid
 import { useFadeIn } from '@/lib/animations';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import PaymentWithdrawal from './PaymentWithdrawal';
 
 interface PaymentMethod {
   id: string;
@@ -39,6 +39,7 @@ const Payments = () => {
 
   const headerAnimation = useFadeIn('up');
   const paymentMethodsAnimation = useFadeIn('up', { delay: 100 });
+  const withdrawalAnimation = useFadeIn('up', { delay: 150 });
   const revenueShareAnimation = useFadeIn('up', { delay: 200 });
 
   useEffect(() => {
@@ -180,7 +181,7 @@ const Payments = () => {
     toast.success('Revenue split settings saved successfully');
     setShowSplitForm(false);
   };
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -288,6 +289,14 @@ const Payments = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Payment Withdrawal */}
+      <div
+        ref={withdrawalAnimation.ref}
+        style={withdrawalAnimation.style}
+      >
+        <PaymentWithdrawal paymentMethods={paymentMethods} />
+      </div>
       
       {/* Revenue Sharing */}
       <Card

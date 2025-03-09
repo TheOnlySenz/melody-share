@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 import MusicLibrary from '@/components/Dashboard/MusicLibrary';
 import Analytics from '@/components/Dashboard/Analytics';
@@ -18,6 +18,7 @@ import { Loader2 } from 'lucide-react';
 const Dashboard = () => {
   const { user, isLoading, activeRole } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
@@ -56,6 +57,9 @@ const Dashboard = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+
+  // For debugging
+  console.log(`Current path: ${location.pathname}, Active role: ${activeRole}`);
 
   // Creator dashboard routes
   if (activeRole === 'creator') {
