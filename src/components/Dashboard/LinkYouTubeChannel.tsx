@@ -79,24 +79,17 @@ const LinkYouTubeChannel: React.FC = () => {
       // In a real implementation, we would verify that the code was added to the channel description
       // For demo purposes, we'll just simulate a successful verification
 
-      // Extract channel name (this is a simplified version)
-      let channelName = '';
-      
-      if (channelUrl.includes('youtube.com/channel/')) {
-        channelName = channelUrl.split('youtube.com/channel/')[1].split('?')[0];
-      } else if (channelUrl.includes('youtube.com/c/')) {
-        channelName = channelUrl.split('youtube.com/c/')[1].split('?')[0];
-      } else if (channelUrl.includes('youtube.com/@')) {
-        channelName = channelUrl.split('youtube.com/@')[1].split('?')[0];
-      }
-
-      // Update user profile with YouTube channel info
-      await updateProfile({
-        youtube_channel_id: channelName,
-        youtube_channel_name: channelName,
-        youtube_channel_url: channelUrl
+      // Call the Supabase Edge Function to verify the channel
+      const { data, error } = await supabase.functions.invoke('verify-youtube-channel', {
+        body: {
+          channelUrl,
+          verificationCode,
+          userId: user?.id
+        }
       });
 
+      if (error) throw error;
+      
       toast.success('YouTube channel linked successfully!');
       
       // Reset form

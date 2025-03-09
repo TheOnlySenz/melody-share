@@ -64,8 +64,7 @@ serve(async (req) => {
       .from('profiles')
       .update({
         youtube_channel_id: channelId,
-        youtube_channel_url: channelUrl,
-        youtube_channel_verified: true,
+        youtube_channel_name: channelId, // Using the channel ID as the name for simplicity
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)
