@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useFadeIn } from '@/lib/animations';
 import { supabase } from '@/integrations/supabase/client';
+import LinkYouTubeChannel from './LinkYouTubeChannel';
 
 const Profile: React.FC = () => {
   const { user, updateProfile } = useAuth();
@@ -148,11 +149,6 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleConnectYouTube = () => {
-    // In a real implementation, this would use the YouTube API OAuth flow
-    toast.info('YouTube integration coming soon');
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -254,52 +250,29 @@ const Profile: React.FC = () => {
         >
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>YouTube Channel</CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1"
-              onClick={handleConnectYouTube}
-              type="button"
-            >
-              <Youtube className="h-4 w-4" />
-              Connect
-            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className={`p-4 bg-muted rounded-lg border border-border flex items-center justify-between ${user?.profile?.youtube_channel_id ? 'bg-primary/5' : ''}`}>
-              <div className="flex items-center space-x-3">
-                <div className={`h-10 w-10 rounded-full ${user?.profile?.youtube_channel_id ? 'bg-primary/10' : 'bg-destructive/10'} flex items-center justify-center`}>
-                  <Youtube className={`h-5 w-5 ${user?.profile?.youtube_channel_id ? 'text-primary' : 'text-destructive'}`} />
+            {user?.profile?.youtube_channel_id ? (
+              <div className="p-4 bg-primary/5 rounded-lg border border-border flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Youtube className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">YouTube Channel</p>
+                    <p className="text-sm text-muted-foreground">
+                      Connected to {user.profile.youtube_channel_name || user.profile.youtube_channel_id}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">YouTube Channel</p>
-                  <p className="text-sm text-muted-foreground">
-                    {user?.profile?.youtube_channel_id 
-                      ? `Connected to ${user.profile.youtube_channel_name}`
-                      : 'Connect to track earnings and analytics'}
-                  </p>
-                </div>
+                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" />
+                  Visit
+                </Button>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {user?.profile?.youtube_channel_id ? 'Connected' : 'Not connected'}
-              </div>
-            </div>
-            
-            {user?.profile?.youtube_channel_id && (
-              <div className="space-y-2">
-                <Label htmlFor="youtube_channel_id">Channel ID</Label>
-                <Input 
-                  id="youtube_channel_id" 
-                  value={formData.youtube_channel_id} 
-                  onChange={handleInputChange}
-                  placeholder="Your YouTube channel ID"
-                />
-              </div>
+            ) : (
+              <LinkYouTubeChannel />
             )}
-            
-            <p className="text-sm text-muted-foreground">
-              Connect your YouTube channel to automatically track videos using our licensed music.
-            </p>
           </CardContent>
         </Card>
         
