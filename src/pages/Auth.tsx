@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useParams, Link } from 'react-router-dom';
 import AuthForm from '@/components/AuthForm';
 import InviteRegistration from '@/components/InviteRegistration';
+import DemoInviteCode from '@/components/DemoInviteCode';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -12,6 +13,7 @@ const Auth = () => {
   const { user, isLoading } = useAuth();
   const { code } = useParams<{ code?: string }>();
   const [activeTab, setActiveTab] = useState<string>(code ? 'register' : 'login');
+  const [showDemo, setShowDemo] = useState<boolean>(false);
 
   // If invite code is present, switch to registration tab
   useEffect(() => {
@@ -72,7 +74,22 @@ const Auth = () => {
           <p className="mt-2 text-sm text-muted-foreground">
             Sign in to access exclusive music for your Shorts and start earning
           </p>
+          
+          {/* Toggle for demo functionality */}
+          <button 
+            onClick={() => setShowDemo(!showDemo)} 
+            className="mt-2 text-xs text-primary hover:underline"
+          >
+            {showDemo ? 'Hide demo options' : 'Need a demo invite?'}
+          </button>
         </div>
+        
+        {showDemo && (
+          <div className="mb-6">
+            <DemoInviteCode />
+          </div>
+        )}
+        
         <Card className="border-0 shadow-md">
           <CardContent className="pt-6">
             <AuthForm />

@@ -22,6 +22,9 @@ const generateRandomCode = (length = 8) => {
   return result;
 };
 
+// Fixed demo code for testing
+const DEMO_CODE = "DEMO2024";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -29,8 +32,93 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, expiryDays, isAdminGenerated } = await req.json();
+    const { userId, expiryDays, isAdminGenerated, isDemo } = await req.json();
     
+    // For demo code requests, we'll create or return the demo code
+    if (isDemo) {
+      console.log("Demo code requested");
+      
+      // Create Supabase client
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      
+      // Check if demo code already exists
+      const { data: existingCode, error: checkError } = await supabase
+        .from('invite_codes')
+        .select('*')
+        .eq('code', DEMO_CODE)
+        .maybeSingle();
+        
+      if (checkError) {
+        throw checkError;
+      }
+      
+      // If demo code doesn't exist, create it
+      if (!existingCode) {
+        console.log("Creating new demo code");
+        const { data: newDemoCode, error: createError } = await supabase
+          .from('invite_codes')
+          .insert({
+            code: DEMO_CODE,
+            created_by: userId || null,
+            expires_at: null, // Never expires
+            is_admin_generated: true
+          })
+          .select()
+          .single();
+          
+        if (createError) {
+          throw createError;
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            invite: newDemoCode,
+            message: "Demo code created"
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // If code exists but is already used, reset it
+      if (existingCode && existingCode.is_used) {
+        console.log("Resetting used demo code");
+        const { data: resetCode, error: resetError } = await supabase
+          .from('invite_codes')
+          .update({ 
+            is_used: false,
+            used_by: null 
+          })
+          .eq('code', DEMO_CODE)
+          .select()
+          .single();
+          
+        if (resetError) {
+          throw resetError;
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            invite: resetCode,
+            message: "Demo code reset"
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Return the existing demo code
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          invite: existingCode,
+          message: "Existing demo code returned"
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Regular invite code generation (existing functionality)
     if (!userId) {
       return new Response(
         JSON.stringify({ error: 'Missing required userId parameter' }),
