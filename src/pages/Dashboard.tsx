@@ -74,6 +74,8 @@ const Dashboard = () => {
           <Route path="/my-music" element={<Navigate to="/dashboard/music" replace />} />
           <Route path="/royalties" element={<Navigate to="/dashboard/earnings" replace />} />
           <Route path="/music-analytics" element={<Navigate to="/dashboard/analytics" replace />} />
+          {/* Fallback route for any other paths */}
+          <Route path="*" element={<Navigate to="/dashboard/music" replace />} />
         </Routes>
       </DashboardLayout>
     );
@@ -89,11 +91,14 @@ const Dashboard = () => {
         <Route path="/music-analytics" element={<Analytics />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/payments" element={<Payments />} />
         <Route path="/invites" element={<InvitesManagement />} />
         {/* Redirect creator routes to artist dashboard */}
         <Route path="/music" element={<Navigate to="/dashboard/my-music" replace />} />
         <Route path="/analytics" element={<Navigate to="/dashboard/music-analytics" replace />} />
         <Route path="/earnings" element={<Navigate to="/dashboard/royalties" replace />} />
+        {/* Fallback route for any other paths */}
+        <Route path="*" element={<Navigate to="/dashboard/my-music" replace />} />
       </Routes>
     </DashboardLayout>
   );
